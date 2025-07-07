@@ -52,7 +52,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, session }) => {
         const totalBills = billsData.length;
         const paidBills = billsData.filter(bill => bill.status === 'Paid').length;
         const unpaidBills = totalBills - paidBills;
-        const totalAmount = billsData.reduce((sum, bill) => sum + parseFloat(bill.amount), 0);
+        const totalAmount = billsData.reduce((sum, bill) => sum + parseFloat(bill.amount.toString()), 0);
 
         setStats({
           totalBills,
