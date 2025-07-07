@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bills: {
+        Row: {
+          amount: number
+          bill_id: string
+          connection_type: string
+          consumer_name: string
+          created_at: string | null
+          meter_number: string
+          status: string
+          units_consumed: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bill_id?: string
+          connection_type: string
+          consumer_name: string
+          created_at?: string | null
+          meter_number: string
+          status?: string
+          units_consumed: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bill_id?: string
+          connection_type?: string
+          consumer_name?: string
+          created_at?: string | null
+          meter_number?: string
+          status?: string
+          units_consumed?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
