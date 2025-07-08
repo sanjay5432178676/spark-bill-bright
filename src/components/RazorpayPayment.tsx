@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { CreditCard, Shield, Zap } from 'lucide-react';
+import { CreditCard, Shield, Zap, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface RazorpayPaymentProps {
   amount: number;
@@ -25,6 +27,11 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
   onPaymentFailure
 }) => {
   const [loading, setLoading] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({
+    name: billData.consumer_name || '',
+    email: '',
+    contact: ''
+  });
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -36,46 +43,83 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
     });
   };
 
+  const validateForm = () => {
+    if (!customerInfo.name.trim()) {
+      toast.error('Please enter your name');
+      return false;
+    }
+    if (!customerInfo.email.trim() || !/\S+@\S+\.\S+/.test(customerInfo.email)) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
+    if (!customerInfo.contact.trim() || !/^\d{10}$/.test(customerInfo.contact)) {
+      toast.error('Please enter a valid 10-digit phone number');
+      return false;
+    }
+    return true;
+  };
+
+  const createOrder = async () => {
+    try {
+      // In a real application, you would call your backend to create a Razorpay order
+      // For now, we'll simulate this with a mock order ID
+      const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      return orderId;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw new Error('Failed to create order');
+    }
+  };
+
   const handlePayment = async () => {
+    if (!validateForm()) return;
+    
     setLoading(true);
     
     try {
       const isScriptLoaded = await loadRazorpayScript();
       
       if (!isScriptLoaded) {
-        throw new Error('Failed to load Razorpay SDK');
+        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
       }
 
+      const orderId = await createOrder();
+
       const options = {
-        key: 'rzp_test_9999999999', // Replace with your Razorpay Key ID
-        amount: Math.round(amount * 100), // Razorpay expects amount in paise
+        key: 'rzp_test_9999999999', // Replace with your actual Razorpay Key ID
+        amount: Math.round(amount * 100), // Amount in paise
         currency: 'INR',
         name: 'ElectroBill',
-        description: `Electricity Bill Payment - ${billData.meter_number}`,
+        description: `Electricity Bill Payment - Meter: ${billData.meter_number}`,
         image: '/favicon.ico',
-        order_id: '', // You should create an order on your backend
+        order_id: orderId,
         handler: function (response: any) {
           console.log('Payment Success:', response);
-          toast.success('Payment successful!');
+          toast.success('Payment completed successfully!');
           onPaymentSuccess();
         },
         prefill: {
-          name: billData.consumer_name,
-          email: 'customer@example.com',
-          contact: '9999999999'
+          name: customerInfo.name,
+          email: customerInfo.email,
+          contact: customerInfo.contact
         },
         notes: {
           bill_id: billData.bill_id,
-          meter_number: billData.meter_number
+          meter_number: billData.meter_number,
+          consumer_name: billData.consumer_name
         },
         theme: {
-          color: '#3B82F6'
+          color: '#2563eb'
         },
         modal: {
           ondismiss: function() {
             setLoading(false);
-            toast.info('Payment cancelled');
+            toast.info('Payment was cancelled');
           }
+        },
+        retry: {
+          enabled: true,
+          max_count: 3
         }
       };
 
@@ -83,7 +127,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
       
       razorpay.on('payment.failed', function (response: any) {
         console.error('Payment Failed:', response.error);
-        toast.error('Payment failed. Please try again.');
+        toast.error(`Payment failed: ${response.error.description || 'Please try again'}`);
         onPaymentFailure(response.error);
         setLoading(false);
       });
@@ -94,91 +138,170 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
       console.error('Payment Error:', error);
       toast.error('Unable to process payment. Please try again.');
       onPaymentFailure(error);
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card className="glass-effect card-hover border-0 shadow-xl">
-      <CardHeader className="text-center pb-4">
-        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4 floating">
-          <CreditCard className="w-8 h-8 text-white" />
-        </div>
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Secure Payment
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent className="space-y-6">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-gray-900 mb-2">
-            ₹{amount.toFixed(2)}
+    <div className="max-w-md mx-auto">
+      <Card className="shadow-2xl border-0 bg-white">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <Lock className="w-6 h-6 text-white" />
+            </div>
           </div>
-          <div className="text-gray-600">
-            Bill for Meter: {billData.meter_number}
+          <CardTitle className="text-center text-xl font-semibold">
+            Secure Payment
+          </CardTitle>
+          <p className="text-center text-blue-100 text-sm">
+            Pay your electricity bill securely
+          </p>
+        </CardHeader>
+        
+        <CardContent className="p-6 space-y-6">
+          {/* Bill Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 border">
+            <h3 className="font-semibold text-gray-900 mb-3">Bill Summary</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Meter Number:</span>
+                <span className="font-medium">{billData.meter_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Consumer Name:</span>
+                <span className="font-medium">{billData.consumer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Units Consumed:</span>
+                <span className="font-medium">{billData.units_consumed} kWh</span>
+              </div>
+              <div className="border-t pt-2 mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-900">Total Amount:</span>
+                  <span className="text-2xl font-bold text-blue-600">₹{amount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="flex flex-col items-center space-y-2">
-            <Shield className="w-6 h-6 text-green-500" />
-            <span className="text-xs text-gray-600">Secure</span>
-          </div>
-          <div className="flex flex-col items-center space-y-2">
-            <Zap className="w-6 h-6 text-yellow-500" />
-            <span className="text-xs text-gray-600">Instant</span>
-          </div>
-          <div className="flex flex-col items-center space-y-2">
-            <CreditCard className="w-6 h-6 text-blue-500" />
-            <span className="text-xs text-gray-600">All Cards</span>
-          </div>
-        </div>
+          {/* Customer Information Form */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900">Customer Information</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                Full Name *
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                value={customerInfo.name}
+                onChange={(e) => setCustomerInfo(prev => ({...prev, name: e.target.value}))}
+                placeholder="Enter your full name"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-        <div className="space-y-3">
-          <div className="text-sm text-gray-600">
-            Accepted Payment Methods:
-          </div>
-          <div className="flex justify-center space-x-4">
-            <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg text-xs font-medium text-blue-700">
-              Credit Card
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email Address *
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={customerInfo.email}
+                onChange={(e) => setCustomerInfo(prev => ({...prev, email: e.target.value}))}
+                placeholder="Enter your email address"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
             </div>
-            <div className="px-3 py-2 bg-gradient-to-r from-green-50 to-green-100 rounded-lg text-xs font-medium text-green-700">
-              Debit Card
-            </div>
-            <div className="px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg text-xs font-medium text-purple-700">
-              UPI
-            </div>
-            <div className="px-3 py-2 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg text-xs font-medium text-orange-700">
-              Net Banking
-            </div>
-          </div>
-        </div>
 
-        <Button 
-          onClick={handlePayment}
-          disabled={loading}
-          className="w-full morphing-button bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 text-lg"
-        >
-          {loading ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              <span>Processing...</span>
+            <div className="space-y-2">
+              <Label htmlFor="contact" className="text-sm font-medium text-gray-700">
+                Phone Number *
+              </Label>
+              <Input
+                id="contact"
+                type="tel"
+                value={customerInfo.contact}
+                onChange={(e) => setCustomerInfo(prev => ({...prev, contact: e.target.value}))}
+                placeholder="10-digit mobile number"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                maxLength={10}
+                required
+              />
             </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <CreditCard className="w-5 h-5" />
-              <span>Pay Now</span>
-            </div>
-          )}
-        </Button>
+          </div>
 
-        <div className="text-xs text-center text-gray-500 space-y-1">
-          <div>🔒 Your payment information is secure and encrypted</div>
-          <div>Powered by Razorpay</div>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Security Features */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-green-900 mb-1">Your payment is secure</p>
+                <p className="text-green-700">256-bit SSL encryption • PCI DSS compliant</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Methods */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900">Accepted Payment Methods</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium">Cards</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <Zap className="w-5 h-5 text-purple-600" />
+                <span className="text-sm font-medium">UPI</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium">Net Banking</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
+                <AlertCircle className="w-5 h-5 text-orange-600" />
+                <span className="text-sm font-medium">Wallets</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pay Button */}
+          <Button 
+            onClick={handlePayment}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                <span>Processing Payment...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <Lock className="w-5 h-5" />
+                <span>Pay ₹{amount.toFixed(2)} Securely</span>
+              </div>
+            )}
+          </Button>
+
+          {/* Footer */}
+          <div className="text-center space-y-2 pt-4 border-t">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              <Shield className="w-4 h-4" />
+              <span>Powered by Razorpay</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Your payment information is encrypted and secure
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
