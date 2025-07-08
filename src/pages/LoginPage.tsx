@@ -24,21 +24,42 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
       return;
     }
 
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      console.log('Attempting login with email:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
       });
 
+      console.log('Login response:', { data, error });
+
       if (error) {
-        toast.error(error.message);
-      } else {
+        console.error('Login error:', error);
+        
+        // Handle specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password. Please check your credentials.');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error('Please check your email and confirm your account first.');
+        } else {
+          toast.error(error.message);
+        }
+      } else if (data.user) {
+        console.log('Login successful:', data.user);
         toast.success('Login successful!');
+        // Navigation will be handled by the auth state change in App.tsx
       }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Unexpected login error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -78,6 +99,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   placeholder="Enter your email"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -94,6 +116,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   placeholder="Enter your password"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>

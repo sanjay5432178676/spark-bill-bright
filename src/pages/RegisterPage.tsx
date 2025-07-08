@@ -26,6 +26,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       return;
     }
 
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -39,24 +44,45 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+      console.log('Attempting registration with email:', email);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
         options: {
           data: {
-            username: username,
-          }
+            username: username.trim(),
+          },
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
+      console.log('Registration response:', { data, error });
+
       if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success('Registration successful! Please check your email for verification.');
-        onNavigate('login');
+        console.error('Registration error:', error);
+        
+        if (error.message.includes('User already registered')) {
+          toast.error('This email is already registered. Please try logging in instead.');
+        } else if (error.message.includes('Password should be at least')) {
+          toast.error('Password should be at least 6 characters long');
+        } else {
+          toast.error(error.message);
+        }
+      } else if (data.user) {
+        console.log('Registration successful:', data.user);
+        
+        if (data.user.email_confirmed_at) {
+          toast.success('Registration successful! You can now sign in.');
+          onNavigate('login');
+        } else {
+          toast.success('Registration successful! Please check your email for verification link.');
+          onNavigate('login');
+        }
       }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Unexpected registration error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -96,6 +122,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   placeholder="Enter your username"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-green-500/50 transition-all duration-300"
                   required
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -112,6 +139,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   placeholder="Enter your email"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-green-500/50 transition-all duration-300"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -128,6 +156,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   placeholder="Enter your password"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-green-500/50 transition-all duration-300"
                   required
+                  autoComplete="new-password"
                 />
               </div>
             </div>
@@ -144,6 +173,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   placeholder="Confirm your password"
                   className="pl-10 glass-effect border-0 focus:ring-2 focus:ring-green-500/50 transition-all duration-300"
                   required
+                  autoComplete="new-password"
                 />
               </div>
             </div>

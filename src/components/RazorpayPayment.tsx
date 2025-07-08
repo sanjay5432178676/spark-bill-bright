@@ -35,7 +35,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
-      // Check if Razorpay is already loaded
       if (window.Razorpay) {
         resolve(true);
         return;
@@ -56,15 +55,25 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
   };
 
   const validateForm = () => {
+    console.log('Validating form with data:', customerInfo);
+    
     if (!customerInfo.name.trim()) {
       toast.error('Please enter your name');
       return false;
     }
-    if (!customerInfo.email.trim() || !/\S+@\S+\.\S+/.test(customerInfo.email)) {
+    if (!customerInfo.email.trim()) {
+      toast.error('Please enter your email address');
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(customerInfo.email)) {
       toast.error('Please enter a valid email address');
       return false;
     }
-    if (!customerInfo.contact.trim() || !/^\d{10}$/.test(customerInfo.contact)) {
+    if (!customerInfo.contact.trim()) {
+      toast.error('Please enter your phone number');
+      return false;
+    }
+    if (!/^\d{10}$/.test(customerInfo.contact.replace(/\D/g, ''))) {
       toast.error('Please enter a valid 10-digit phone number');
       return false;
     }
@@ -73,7 +82,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
 
   const createOrder = async () => {
     try {
-      // Generate a mock order ID for testing
       const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       console.log('Order created:', orderId);
       return orderId;
@@ -84,7 +92,12 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
   };
 
   const handlePayment = async () => {
-    if (!validateForm()) return;
+    console.log('Payment button clicked');
+    
+    if (!validateForm()) {
+      console.log('Form validation failed');
+      return;
+    }
     
     setLoading(true);
     
@@ -99,8 +112,8 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
       const orderId = await createOrder();
 
       const options = {
-        key: 'rzp_test_uHuVXWPgSq4wxd', // Your actual API key
-        amount: Math.round(amount * 100), // Amount in paise
+        key: 'rzp_test_uHuVXWPgSq4wxd',
+        amount: Math.round(amount * 100),
         currency: 'INR',
         name: 'ElectroBill',
         description: `Electricity Bill Payment - Meter: ${billData?.meter_number || 'N/A'}`,
@@ -159,6 +172,14 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    console.log(`Updating ${field} with value:`, value);
+    setCustomerInfo(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <Card className="shadow-2xl border-0 bg-white">
@@ -177,7 +198,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
         </CardHeader>
         
         <CardContent className="p-6 space-y-6">
-          {/* Bill Summary */}
           <div className="bg-gray-50 rounded-lg p-4 border">
             <h3 className="font-semibold text-gray-900 mb-3">Bill Summary</h3>
             <div className="space-y-2 text-sm">
@@ -202,7 +222,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             </div>
           </div>
 
-          {/* Customer Information Form */}
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Customer Information</h3>
             
@@ -214,7 +233,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
                 id="name"
                 type="text"
                 value={customerInfo.name}
-                onChange={(e) => setCustomerInfo(prev => ({...prev, name: e.target.value}))}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Enter your full name"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
@@ -229,7 +248,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
                 id="email"
                 type="email"
                 value={customerInfo.email}
-                onChange={(e) => setCustomerInfo(prev => ({...prev, email: e.target.value}))}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="Enter your email address"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
@@ -244,7 +263,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
                 id="contact"
                 type="tel"
                 value={customerInfo.contact}
-                onChange={(e) => setCustomerInfo(prev => ({...prev, contact: e.target.value}))}
+                onChange={(e) => handleInputChange('contact', e.target.value)}
                 placeholder="10-digit mobile number"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 maxLength={10}
@@ -253,7 +272,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             </div>
           </div>
 
-          {/* Security Features */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -264,7 +282,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             </div>
           </div>
 
-          {/* Payment Methods */}
           <div className="space-y-3">
             <h4 className="font-medium text-gray-900">Accepted Payment Methods</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -287,7 +304,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             </div>
           </div>
 
-          {/* Pay Button */}
           <Button 
             onClick={handlePayment}
             disabled={loading}
@@ -306,7 +322,6 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             )}
           </Button>
 
-          {/* Footer */}
           <div className="text-center space-y-2 pt-4 border-t">
             <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
               <Shield className="w-4 h-4" />
