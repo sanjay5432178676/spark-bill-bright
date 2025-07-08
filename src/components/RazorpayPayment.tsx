@@ -28,17 +28,29 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
-    name: billData.consumer_name || '',
+    name: billData?.consumer_name || '',
     email: '',
     contact: ''
   });
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        console.log('Razorpay script loaded successfully');
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load Razorpay script');
+        resolve(false);
+      };
       document.body.appendChild(script);
     });
   };
@@ -61,9 +73,9 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
 
   const createOrder = async () => {
     try {
-      // In a real application, you would call your backend to create a Razorpay order
-      // For now, we'll simulate this with a mock order ID
+      // Generate a mock order ID for testing
       const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('Order created:', orderId);
       return orderId;
     } catch (error) {
       console.error('Error creating order:', error);
@@ -77,6 +89,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
     setLoading(true);
     
     try {
+      console.log('Starting payment process...');
       const isScriptLoaded = await loadRazorpayScript();
       
       if (!isScriptLoaded) {
@@ -86,16 +99,17 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
       const orderId = await createOrder();
 
       const options = {
-        key: 'rzp_test_9999999999', // Replace with your actual Razorpay Key ID
+        key: 'rzp_test_uHuVXWPgSq4wxd', // Your actual API key
         amount: Math.round(amount * 100), // Amount in paise
         currency: 'INR',
         name: 'ElectroBill',
-        description: `Electricity Bill Payment - Meter: ${billData.meter_number}`,
+        description: `Electricity Bill Payment - Meter: ${billData?.meter_number || 'N/A'}`,
         image: '/favicon.ico',
         order_id: orderId,
         handler: function (response: any) {
-          console.log('Payment Success:', response);
+          console.log('Payment Success Response:', response);
           toast.success('Payment completed successfully!');
+          setLoading(false);
           onPaymentSuccess();
         },
         prefill: {
@@ -104,15 +118,16 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
           contact: customerInfo.contact
         },
         notes: {
-          bill_id: billData.bill_id,
-          meter_number: billData.meter_number,
-          consumer_name: billData.consumer_name
+          bill_id: billData?.bill_id || '',
+          meter_number: billData?.meter_number || '',
+          consumer_name: billData?.consumer_name || ''
         },
         theme: {
           color: '#2563eb'
         },
         modal: {
           ondismiss: function() {
+            console.log('Payment modal dismissed');
             setLoading(false);
             toast.info('Payment was cancelled');
           }
@@ -123,20 +138,22 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
         }
       };
 
+      console.log('Razorpay options:', options);
+
       const razorpay = new window.Razorpay(options);
       
       razorpay.on('payment.failed', function (response: any) {
-        console.error('Payment Failed:', response.error);
-        toast.error(`Payment failed: ${response.error.description || 'Please try again'}`);
+        console.error('Payment Failed Response:', response);
+        toast.error(`Payment failed: ${response.error?.description || 'Please try again'}`);
         onPaymentFailure(response.error);
         setLoading(false);
       });
 
       razorpay.open();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment Error:', error);
-      toast.error('Unable to process payment. Please try again.');
+      toast.error(error.message || 'Unable to process payment. Please try again.');
       onPaymentFailure(error);
       setLoading(false);
     }
@@ -155,7 +172,7 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             Secure Payment
           </CardTitle>
           <p className="text-center text-blue-100 text-sm">
-            Pay your electricity bill securely
+            Pay your electricity bill securely with Razorpay
           </p>
         </CardHeader>
         
@@ -166,15 +183,15 @@ const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Meter Number:</span>
-                <span className="font-medium">{billData.meter_number}</span>
+                <span className="font-medium">{billData?.meter_number || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Consumer Name:</span>
-                <span className="font-medium">{billData.consumer_name}</span>
+                <span className="font-medium">{billData?.consumer_name || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Units Consumed:</span>
-                <span className="font-medium">{billData.units_consumed} kWh</span>
+                <span className="font-medium">{billData?.units_consumed || 0} kWh</span>
               </div>
               <div className="border-t pt-2 mt-3">
                 <div className="flex justify-between items-center">
